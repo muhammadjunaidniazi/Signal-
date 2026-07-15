@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Signal Scanner Pro — JN Softs</title>
+<meta name="description" content="Live multi-indicator crypto technical analysis and signal tool — Binance data, no backend.">
+<link rel="stylesheet" href="style.css">
+<!-- TradingView-style candlestick charting library, loaded from CDN by the user's browser at runtime -->
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== HEADER ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">JN</div>
+      <div>
+        <h1>Signal Scanner <span class="pro">Pro</span></h1>
+        <small>Multi-indicator crypto technical analysis — JN Softs</small>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <span class="net-badge" id="netBadge"><span class="dot" id="netDot"></span><span id="netText">checking…</span></span>
+      <button class="icon-btn" id="notifBtn" title="Enable notifications">🔔</button>
+    </div>
+  </header>
+
+  <!-- ===== STATUS / LOADING LINE ===== -->
+  <div class="status-line" id="statusLine" style="display:none;">
+    <div class="spinner"></div>
+    <span id="statusText">Checking Internet…</span>
+  </div>
+  <div class="error-line" id="errorLine" style="display:none;"></div>
+
+  <div class="layout">
+
+    <!-- ===== LEFT: CONTROLS ===== -->
+    <aside class="panel controls">
+      <h2>Market</h2>
+
+      <div class="field">
+        <label>Symbol (Binance spot pair)</label>
+        <input type="text" id="symbolInput" value="BTCUSDT" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="chip-grid" id="chipGrid"></div>
+
+      <div class="field">
+        <label>Custom coin</label>
+        <div class="custom-row">
+          <input type="text" id="customSymbolInput" placeholder="e.g. EPICUSDT" autocomplete="off" spellcheck="false">
+          <button class="btn-small" id="customAddBtn">Use</button>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Timeframe</label>
+          <select id="intervalSelect">
+            <option value="1m">1m</option>
+            <option value="3m">3m</option>
+            <option value="5m">5m</option>
+            <option value="15m">15m</option>
+            <option value="30m">30m</option>
+            <option value="1h" selected>1H</option>
+            <option value="2h">2H</option>
+            <option value="4h">4H</option>
+            <option value="6h">6H</option>
+            <option value="12h">12H</option>
+            <option value="1d">1D</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Bars</label>
+          <input type="number" id="limitInput" value="220" min="80" max="500">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Auto-refresh</label>
+        <div class="autorow">
+          <select id="autoIntervalSelect">
+            <option value="10">10 seconds</option>
+            <option value="30" selected>30 seconds</option>
+            <option value="60">1 minute</option>
+            <option value="300">5 minutes</option>
+          </select>
+          <button class="btn-ghost" id="autoToggleBtn">Off</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn-primary" id="fetchBtn">Scan market</button>
+      </div>
+
+      <div class="hint">
+        Type <strong>any</strong> Binance spot pair — quick chips are shortcuts, not a limit. Live OHLC via Binance public API, multi-mirror fallback, no key required.
+      </div>
+    </aside>
+
+    <!-- ===== RIGHT: RESULTS ===== -->
+    <main class="right">
+
+      <!-- Empty state -->
+      <div class="panel empty" id="emptyState">
+        <div class="glyph">◔</div>
+        <div>Pick a pair, hit <strong>Scan market</strong>, and the full signal breakdown will appear here.</div>
+      </div>
+
+      <!-- Signal Card -->
+      <section class="panel signal-card" id="signalCard" style="display:none;">
+        <div class="sc-top">
+          <div class="sc-symbol" id="scSymbol">—</div>
+          <div class="sc-tf" id="scTf">—</div>
+        </div>
+        <div class="sc-badge-row">
+          <div class="sc-label" id="scLabel">NO TRADE</div>
+          <div class="sc-tier" id="scTier">Weak</div>
+        </div>
+        <div class="sc-conf-wrap">
+          <div class="sc-conf-bar"><div class="sc-conf-fill" id="scConfFill"></div></div>
+          <div class="sc-conf-num" id="scConfNum">0%</div>
+        </div>
+        <div class="sc-grid">
+          <div class="sc-item"><span>Entry</span><b id="scEntry">Market</b></div>
+          <div class="sc-item"><span>Price</span><b id="scPrice">—</b></div>
+          <div class="sc-item"><span>TP1</span><b id="scTp1">—</b></div>
+          <div class="sc-item"><span>TP2</span><b id="scTp2">—</b></div>
+          <div class="sc-item"><span>TP3</span><b id="scTp3">—</b></div>
+          <div class="sc-item"><span>Stop Loss</span><b id="scSl">—</b></div>
+          <div class="sc-item"><span>Risk : Reward</span><b id="scRr">—</b></div>
+          <div class="sc-item"><span>Trend</span><b id="scTrend">—</b></div>
+        </div>
+        <div class="sc-why" id="scWhy">—</div>
+
+        <div class="tg-box">
+          <div class="tg-head">
+            <span>Telegram-style message</span>
+            <button class="btn-small" id="copyBtn">Copy</button>
+          </div>
+          <pre class="tg-msg" id="tgMsg"></pre>
+        </div>
+        <div class="disclaimer">⚠️ Technical-analysis output only, not financial advice — verify independently before trading.</div>
+      </section>
+
+      <!-- Stats -->
+      <section class="stats-grid" id="statsGrid" style="display:none;"></section>
+
+      <!-- Levels -->
+      <section class="panel" id="levelsPanel" style="display:none;">
+        <h2>Support / resistance reference</h2>
+        <div class="stats-grid" id="levelsGrid"></div>
+      </section>
+
+      <!-- Chart -->
+      <section class="panel" id="chartPanel" style="display:none;">
+        <h2>Price chart — candles + EMA overlays</h2>
+        <div id="tvChart" class="tv-chart"></div>
+        <h2 style="margin-top:16px;">RSI / MACD / ADX</h2>
+        <canvas id="oscCanvas" height="90"></canvas>
+        <canvas id="macdCanvas" height="90"></canvas>
+      </section>
+
+      <!-- Indicator readout -->
+      <section class="panel" id="indicatorPanel" style="display:none;">
+        <h2>Full indicator readout</h2>
+        <div class="ind-grid" id="indGrid"></div>
+      </section>
+
+      <!-- History -->
+      <section class="panel" id="historyPanel" style="display:none;">
+        <h2>Signal history <span class="muted">(this session, max 100)</span></h2>
+        <div class="hist-controls">
+          <input type="text" id="histSearch" placeholder="Search symbol…">
+          <select id="histFilter">
+            <option value="ALL">All</option>
+            <option value="BUY LONG">Buy</option>
+            <option value="SELL SHORT">Sell</option>
+            <option value="WAIT">Wait</option>
+            <option value="NO TRADE">No trade</option>
+          </select>
+          <button class="btn-small" id="histExportBtn">Export JSON</button>
+          <button class="btn-small danger" id="histClearBtn">Clear</button>
+        </div>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Time</th><th>Symbol</th><th>TF</th><th>Signal</th><th>Confidence</th><th>Price</th></tr></thead>
+            <tbody id="histBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>Signal Scanner Pro reads live Binance market data and applies rule-based technical analysis (EMA, RSI, MACD, ADX, ATR, Supertrend, VWAP, volume, breakout &amp; pattern checks). Outputs are computed heuristics, not guarantees — always manage your own risk.</footer>
+</div>
+
+<audio id="alertSound" preload="auto"></audio>
+<script src="script.js"></script>
+</body>
+</html>
